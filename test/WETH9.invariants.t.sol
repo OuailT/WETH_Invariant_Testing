@@ -2,51 +2,65 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import {WETH9} from "../src/WETH9.sol";
+import {Handler} from "./Handlers/Handler.sol";
 
 
 contract WETH9Invariants is Test {
     WETH9 public weth;
+    Handler public handler;
 
     function setUp() public {
         weth = new WETH9();
+        handler = new Handler(weth);
+
+        // Note: targetContract allow to include the contract to the invariant fuzzing.
+        targetContract(address(handler));
     }
 
     /****************************** CHAPTER1: Introduction  ****************/
     /**
-        The invariant here is that "the totalSupply" Must hold Zero as nobody send Ether to it
-        because the the contract didn't mint any WETH token.
+        The invariant here is that "the totalSupply" Must hold Zero as nobody sends Ether to the contract
+        Therefore the contract didn't mint any WETH token.
         Result: The assertion should fail = totalSupply doesn't equal to zero
     */ 
     
-    function invariant_badInvariantThisShouldFail() public {
-        assertEq(1, weth.totalSupply());
-    }
+    // function invariant_badInvariantThisShouldFail() public {
+    //     assertEq(1, weth.totalSupply());
+    // }
 
 
     /**
-        The invariant here is that "the totalSupply" Must hold Zero as nobody send Ether to it
-        because the the contract didn't mint any WETH token.
+        The invariant here is that "the totalSupply" Must hold Zero as nobody send Ether to the contract
+        therefore the the contract didn't mint any WETH token.
         Result: The assertion pass as totalSupply it does equal to zero
 
         While reading traces: I notice that when depositing 0 Ether the function didn't 
-        revert. Then Invariant allowed me to discover than depositing 0 Ether is possible 
+        revert(Passed). Then Invariant allowed me to discover than depositing 0 Ether is possible 
         WETH contract.
+
+        A successful failure: We Broke the invariant(totalSupply == 0) by simply allowing the fuzzer to deposit random amount of ether by calling
+        the deposit function inside the handle contract.
+        No we have Invalid Invariant.
     */ 
-    function invariant_wethSupplyAlwaysZero() public {
-        assertEq(0, weth.totalSupply());
-    }
+    // function invariant_wethSupplyAlwaysZero() public {
+    //     assertEq(0, weth.totalSupply());
+    // }
 
 
-    // Test if the contract allows for 0 deposit.
-    function test_zeroDeposit() public {
-        weth.deposit{value: 0}();
-        assertEq(0, weth.balanceOf(address(this)));
-        assertEq(0, weth.totalSupply());
-    }
+    // // Test if the contract allows for 0 deposit. YES the test passed.
+    // function test_zeroDeposit() public {
+    //     weth.deposit{value: 0}();
+    //     assertEq(0, weth.balanceOf(address(this)));
+    //     assertEq(0, weth.totalSupply());
+    // }
 
-
-    /****************************** CHAPTER2: Handler  ****************/
     
 
+    // 2. Invariant: The balance of handler contract in ETH + weth.totalSupply() MUST always equal
+    // to the circulating supply of ETH
+    function invariant_conservationOfEth() public {
+        assertEq(handler.ETH_SUPPLY(),
+                 address(handler).balance + weth.totalSupply());
+    }
 
 }
