@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
@@ -54,13 +55,43 @@ contract WETH9Invariants is Test {
     //     assertEq(0, weth.totalSupply());
     // }
 
-    
+
 
     // 2. Invariant: The balance of handler contract in ETH + weth.totalSupply() MUST always equal
     // to the circulating supply of ETH
-    function invariant_conservationOfEth() public {
-        assertEq(handler.ETH_SUPPLY(),
-                 address(handler).balance + weth.totalSupply());
+    // function invariant_conservationOfEth() public {
+    //     assertEq(handler.ETH_SUPPLY(),
+    //              address(handler).balance + weth.totalSupply());
+    // }
+
+    /****************************** "Solvency" Invariant ****************/
+
+    // Test that the WETH contract's "Ether" balance should always equal to
+    // the sum of all users deposits Minus all users withdraws.
+    function invariant_solvencyDeposits() public {
+        assertEq(address(weth).balance, 
+                handler.ghost_allDeposits() - handler.ghost_allWithdraws());
     }
+
+    
+    // The WETH contract's Ether balance should at least have
+    // the sum of all depositors balances in ETH 1:1
+    function invariant_solvencyBalances() public {
+        
+        uint256 depositsBalancesSum;
+
+        // get the address of all depositors
+        address[] memory depositors = handler.actors();
+        for(uint256 i; i < depositors.length; i++) {
+            depositsBalancesSum += weth.balanceOf(depositors[i]);
+        }
+
+        assertEq(address(weth).balance,
+                depositsBalancesSum);
+
+    }
+
+    
+
 
 }
