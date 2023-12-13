@@ -14,6 +14,16 @@ contract WETH9Invariants is Test {
         weth = new WETH9();
         handler = new Handler(weth);
 
+        bytes4[] memory selectors = new bytes4[](3);
+        selectors[0] = Handler.deposit.selector;
+        selectors[1] =  Handler.withdraw.selector;
+        selectors[2] = Handler.sendETHFallBack.selector;
+
+        targetSelector(FuzzSelector({
+            addr: address(handler),
+            selectors: selectors 
+        }));
+
         // Note: targetContract allow to include the contract to the invariant fuzzing.
         targetContract(address(handler));
     }
@@ -77,20 +87,33 @@ contract WETH9Invariants is Test {
     // The WETH contract's Ether balance should at least have
     // the sum of all depositors balances in ETH 1:1
     function invariant_solvencyBalances() public {
-        
-        uint256 depositsBalancesSum;
-
-        // get the address of all depositors
-        address[] memory depositors = handler.actors();
-        for(uint256 i; i < depositors.length; i++) {
-            depositsBalancesSum += weth.balanceOf(depositors[i]);
-        }
-
+        uint256 balancesSum = handler.reduceActors(0,
+            this.balanceAccumulator);
+       
         assertEq(address(weth).balance,
-                depositsBalancesSum);
-
+                balancesSum);
     }
 
+
+    function balanceAccumulator(
+        uint256 balance,
+        address caller) external view returns(uint256) {
+            return balance + weth.balanceOf(caller);
+    }
+
+    /****************************** "Individual balance invriant" ****************/
+
+
+
+    // No individual account balance can exceed the
+    // WETH totalSupply().
+    function invariant_depositorBalance() public {
+        handler.forEachActor(this.assertAccountBalanceTotalSupply);
+    }
+
+    function assertAccountBalanceTotalSupply(address account) public {
+        assertLe(weth.balanceOf(account), weth.totalSupply());
+    }
     
 
 

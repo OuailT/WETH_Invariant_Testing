@@ -27,7 +27,7 @@ contract Handler is Test {
 
 
     // Return address of actor.
-    function actors() public returns(address[] memory) {
+    function actors() public view returns(address[] memory) {
         return _actors.addrs;
     }
 
@@ -92,6 +92,19 @@ contract Handler is Test {
     function _send(address to, uint256 amount) public {
          (bool succ, ) = to.call{value: amount}("");
          require(succ, "trx failed");
+    }
+
+
+    function reduceActors(
+        uint256 acc,
+        function(uint256, address) external returns(uint256) func
+    ) public 
+      returns(uint256) {
+      return _actors.reduce(acc, func);
+    }
+
+    function forEachActor(function(address) external func) public {
+        return _actors.forEach(func);
     }
 
 

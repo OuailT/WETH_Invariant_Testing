@@ -34,4 +34,26 @@ library LibAddressSet {
     function countAddr(setAddress storage s) internal view returns(uint256) {
         return s.addrs.length;
     }
+
+
+    function reduce(setAddress storage s, 
+                    uint256 acc,
+                    function(uint256, address) external returns(uint256) func 
+                    ) internal returns (uint256)
+                {
+                for(uint i; i < s.addrs.length; i++) {
+                    acc = func(acc, s.addrs[i]);
+                }
+                return acc;
+            }
+
+    
+    function forEach(setAddress storage s, 
+                     function(address) external func)
+                     internal  {
+                       for(uint256 i; i < s.addrs.length; i++) {
+                            func(s.addrs[i]);
+                       } 
+    }
+
 }
